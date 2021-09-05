@@ -34,6 +34,7 @@ class ErrorStatusCode(IntEnum):
 class HTTPMethod:
     GET = 0,
     PUT = 1,
+    POST = 2,
 
 class bcolors:
     OKGREEN = '\033[32m'
@@ -53,12 +54,14 @@ class SpotifyShuffler:
     def __LogInfo(self, string):
         print(bcolors.OKGREEN + "[+] " + bcolors.ENDC + string)
 
-    def __Request(self, query, header, type: HTTPMethod) -> bool:
+    def __Request(self, query, header, type: HTTPMethod, data="") -> bool:
         try:
             if type == HTTPMethod.GET:
                 self.r = requests.get(query, headers=header)
             if type == HTTPMethod.PUT:
                 self.r = requests.put(query, headers=header)
+            if type == HTTPMethod.POST:
+                self.r = requests.post(query, headers=header, data=data)
         except HTTPError as e:
             self.__LogError(f"HTTP: {e}")
             return False
@@ -77,6 +80,7 @@ class SpotifyShuffler:
                 isError = True
         if isError:
             self.__LogError(f"Query returned a bad status code: {self.r.status_code}.")
+            self.__LogError(f"Message {self.r.json()['error']['message']}")
             return False
         else:
             self.__LogInfo(f"Query complete with status code: {self.r.status_code}")
@@ -98,7 +102,7 @@ class SpotifyShuffler:
                 return
         
 
-        self.__LogInfo("Querying Spotify")
+        self.__LogInfo("Querying Spotify for Playlist")
         header = {'Accept' : 'application/json', 'Content-Type' : 'application/json', 'Authorization' : 'Bearer %s' % self.token}
         
         if self.__Request("https://api.spotify.com/v1/me/playlists", header, HTTPMethod.GET) == False:
@@ -144,44 +148,55 @@ class SpotifyShuffler:
                 self.__LogError("Token has not been set.")
                 return
 
-        # Needed: Name, description, public, cover, songs
-
-        # https://developer.spotify.com/console/post-playlists/
-
-        self.__LogInfo("Querying Spotify")
+        # Query spotify to get information about the playlist
+        self.__LogInfo("Querying Spotify to get information about chosen playlist")
         header = {'Accept' : 'application/json', 'Content-Type' : 'application/json', 'Authorization' : 'Bearer %s' % self.token}
         if self.__Request(f"https://api.spotify.com/v1/playlists/{playlistId}", header, HTTPMethod.GET) == False:
             return
 
-        # https://developer.spotify.com/console/get-playlist/
-        # Gives:
-        # name
-        # description
-        # public
-        # cover
-
         data = json.loads(self.r.text)
         
         # Cover image
-        for items in data['images']:
-            cover = items.get('url')
+        cover = ""
+        for images in data['images']:
+            cover = images.get('url')
+        
+        # User Id
+        userID = data['owner']['uri']
+        userID = userID.split(':')[2]
 
         name = data['name']
         description = data['description']
         public = data['public']
 
-        # https://developer.spotify.com/console/get-playlist-tracks/
-        # Gives:
-        # Songs
+        header = {'Accept' : 'application/json', 'Content-Type' : 'application/json', 'Authorization' : 'Bearer %s' % self.token}
+        
+        # Query spotify for the actual songs in playlist
+        self.__LogInfo("Querying Spotify about tracks in the playlist")
+
+        if self.__Request(f"https://api.spotify.com/v1/playlists/{playlistId}/tracks", header, HTTPMethod.GET) == False:
+            return
+        
+        data = json.loads(self.r.text)
+
+        tracks = []
+            
+        for items in data['items']:
+            tracks.append(items['track'].get('uri'))
+        
+        # Construct a new playlist.
+        self.__LogInfo("Creating Playlist")
 
         header = {'Accept' : 'application/json', 'Content-Type' : 'application/json', 'Authorization' : 'Bearer %s' % self.token}
         
-        if self.__Request(f"https://api.spotify.com/v1/playlists/{playlistId}/tracks", header, HTTPMethod.GET) == False:
+        _data = {'name' : f'{name} (Shuffled)', 'description' : description, 'public' : public}
+        # This is needed to convert the python bool to a json bool!
+
+        print(data)
+        if self.__Request(f"https://api.spotify.com/v1/users/{userID}/playlists", header, HTTPMethod.POST, data) == False:
             return
 
-        
 
-        
 
 
 
@@ -214,7 +229,7 @@ if __name__ == "__main__":
     sys.stdout.buffer.write(b"|____/|_| |_|\__,_|_| |_| |_|\___|_|   \n\n")
     sys.stdout.write("Usage: Shuffle 'token' 'playlist id'.\nHelp: help\n")
 
-    # TODO: How does bash in linux do this, make it work like that?
+    # TODO: Make this better in some way
     ss = SpotifyShuffler()
     while(True):
         playlists = {}
