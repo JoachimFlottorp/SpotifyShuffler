@@ -31,6 +31,10 @@ class ErrorStatusCode(IntEnum):
     BadGateway = 502,
     ServiceUnavailable = 503
 
+class HTTPMethod:
+    GET = 0,
+    PUT = 1,
+
 class bcolors:
     OKGREEN = '\033[32m'
     WARNING = '\033[31m'
@@ -49,33 +53,22 @@ class SpotifyShuffler:
     def __LogInfo(self, string):
         print(bcolors.OKGREEN + "[+] " + bcolors.ENDC + string)
 
-    def SetToken(self, string):
-        self.token = string
-        self.tokenIsSet = True
-
-    def GetPlaylist(self, token="") -> dict:
-        if self.tokenIsSet == False:
-            if token != "":
-                self.tokenIsSet = True
-                self.token = token
-            else:
-                self.__LogError("Token has not been set.")
-                return
-        
-
-        self.__LogInfo("Querying Spotify")
-        header = {'Accept' : 'application/json', 'Content-Type' : 'application/json', 'Authorization' : 'Bearer %s' % self.token}
-                
+    def __Request(self, query, header, type: HTTPMethod) -> bool:
         try:
-            self.r = requests.get("https://api.spotify.com/v1/me/playlists", headers=header)
+            if type == HTTPMethod.GET:
+                self.r = requests.get(query, headers=header)
+            if type == HTTPMethod.PUT:
+                self.r = requests.put(query, headers=header)
         except HTTPError as e:
             self.__LogError(f"HTTP: {e}")
+            return False
         except Exception as e:
             self.__LogError(f"{e}")
+            return False
 
         if self.r.status_code == StatusCode.TooManyRequests:
             self.__LogError("Too many requests done. Either wait a few minutes or check with QueriesLeft function!")
-            return
+            return False
 
         isError = False
         for code in ErrorStatusCode:
@@ -84,9 +77,32 @@ class SpotifyShuffler:
                 isError = True
         if isError:
             self.__LogError(f"Query returned a bad status code: {self.r.status_code}.")
-            return
+            return False
         else:
             self.__LogInfo(f"Query complete with status code: {self.r.status_code}")
+
+        return True
+
+    def SetToken(self, string):
+        self.token = string
+        self.tokenIsSet = True
+        self.__LogInfo("Token set!")
+
+    def GetPlaylist(self, token="") -> dict:
+        if self.tokenIsSet == False:
+            if token != "":
+                self.token = token
+                self.tokenIsSet = True
+            else:
+                self.__LogError("Token has not been set.")
+                return
+        
+
+        self.__LogInfo("Querying Spotify")
+        header = {'Accept' : 'application/json', 'Content-Type' : 'application/json', 'Authorization' : 'Bearer %s' % self.token}
+        
+        if self.__Request("https://api.spotify.com/v1/me/playlists", header, HTTPMethod.GET) == False:
+            return
 
         data = json.loads(self.r.text)
         namesList = {}
@@ -101,18 +117,73 @@ class SpotifyShuffler:
         userIdLoc = fooUsers + 1
 
         userId = foo[userIdLoc]
-        print(userId)
 
+        # Get owned playlists
         for items in data['items']:
             playlistOwnerId = items['owner'].get('uri')
             bar = playlistOwnerId.split(':')
             if bar[2] == userId:
-                namesList[items['name']] = bar[2]
+                baz = items.get('uri').split(':')[2]
+                # Name of playlist and playlist id
+                namesList[items['name']] = baz
 
 
-        print(namesList)
+        # Print owned playlists
+        for k, v in namesList.items():
+            print(f"\nOwned Playlist Name: {k}\nOwned Playlist Id: {v}\n")
+        
+        # Returns list, can always be used by someone.
         return namesList
-                
+    
+    def Shuffle(self, playlistId: str, token=""):
+        if self.tokenIsSet == False:
+            if token != "":
+                self.tokenIsSet = True
+                self.token = token
+            else:
+                self.__LogError("Token has not been set.")
+                return
+
+        # Needed: Name, description, public, cover, songs
+
+        # https://developer.spotify.com/console/post-playlists/
+
+        self.__LogInfo("Querying Spotify")
+        header = {'Accept' : 'application/json', 'Content-Type' : 'application/json', 'Authorization' : 'Bearer %s' % self.token}
+        if self.__Request(f"https://api.spotify.com/v1/playlists/{playlistId}", header, HTTPMethod.GET) == False:
+            return
+
+        # https://developer.spotify.com/console/get-playlist/
+        # Gives:
+        # name
+        # description
+        # public
+        # cover
+
+        data = json.loads(self.r.text)
+        
+        # Cover image
+        for items in data['images']:
+            cover = items.get('url')
+
+        name = data['name']
+        description = data['description']
+        public = data['public']
+
+        # https://developer.spotify.com/console/get-playlist-tracks/
+        # Gives:
+        # Songs
+
+        header = {'Accept' : 'application/json', 'Content-Type' : 'application/json', 'Authorization' : 'Bearer %s' % self.token}
+        
+        if self.__Request(f"https://api.spotify.com/v1/playlists/{playlistId}/tracks", header, HTTPMethod.GET) == False:
+            return
+
+        
+
+        
+
+
 
     def GetUser(self, token):
         self.__LogInfo("This does nothing!")
@@ -144,17 +215,17 @@ if __name__ == "__main__":
     sys.stdout.write("Usage: Shuffle 'token' 'playlist id'.\nHelp: help\n")
 
     # TODO: How does bash in linux do this, make it work like that?
+    ss = SpotifyShuffler()
     while(True):
         playlists = {}
         arg = ""
-        ss = SpotifyShuffler()
         foo = input("Shell: ")
         read = foo.split(" ")[0]
         if read.lower() == 'exit':
             sys.stdout.write("Quitting...\n")
             break
         elif read.lower() == 'help':
-            sys.stdout.write("SpotifyShuffler uses a shell like way of entering commands.\n\nSetToken token -- sets the token for other commands.\n\nGetPlaylist token(If not set)-- returns playlist the user owns, or can be shuffled.\n\nShuffle playlist-id token(If not set) -- Shuffles the specified playlist\nQueriesLeft -- If error code is '429' that means you are rate limited, check cooldown.\n")
+            sys.stdout.write("SpotifyShuffler uses a shell like way of entering commands.\n\nSetToken token -- sets the token for other commands.\n\nGetPlaylist token(If not set)-- returns playlist the user owns, or can be shuffled.\n\nShuffle playlist-id token(If not set) -- Shuffles the specified playlist, NOTE: Shuffled version will be in a new playlist.\n\nQueriesLeft -- If error code is '429' that means you are rate limited, check cooldown.\n\nStatusCode -- prints what every status code means\n")
         elif read.lower() == 'settoken':
             # Make this more functional or something..
             try:
@@ -168,16 +239,15 @@ if __name__ == "__main__":
                 arg = foo.split(" ")[1]
             except (ValueError, IndexError):
                 pass
-            playlists = ss.GetPlaylist(arg)
+            ss.GetPlaylist(arg)
         elif read.lower() == 'queriesleft':
             # This too
             try:
                 arg = foo.split(" ")[1]
             except (ValueError, IndexError):
                 pass
-            ss.QueriesLeft(arg) 
+            ss.QueriesLeft(arg)
+        elif read.lower() == 'statuscode':
+            sys.stdout.write("Status Codes: Ok = 200\nCreated = 201\nAccepted = 202\nNoContent = 204\nNotModified = 304\nBadRequest = 400\nUnauthorized = 401\nForbidden = 403\nNotFound = 404\nTooManyRequests = 429\nInternalServerError = 500\nBadGateway = 502\nServiceUnavailable = 503\n") 
         else:
             sys.stdout.write("Unknown command, try again.\n")
-        
-    # ss = SpotifyShuffler(sys.argv[1])
-    # userOwnedPlaylists = ss.GetPlaylist()

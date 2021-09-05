@@ -1,8 +1,11 @@
 from SpotifyShuffler import *
 
 if __name__ == "__main__":
-    token = "BQDZ9LXhHteDp7mEGsNCaIjzgizs816rJTZ18JHsZfY2sFpqkDQ5zDPlyQ5PdivM2W8pb41UFg0eIBn5BapWDMQepmLE6NC73sYCGo66rh1sBH0ikk8ge2scyYJzKbGgmpgW5twR3_uCY5h9AwLdzZ5V6lCCebLqx3r3Dy2Y2RT92ztF74LkkBKPYbRNeQ"
-    ss = SpotifyShuffler(token)
+    token = "BQAFPpnzEvRByvlY_Lx_tGztthT4Iqxw0nCf7vdvhPtnd507KAlYbPB7OyTYa1ITFmg8JPjxarL8HFemc20QicjQMZ4p0IsDufRSFsFX5SLQJAWLAFpWFJPpZ67R8RRsHhjzvD49DbY0WKL9WJCodhE7wf8c-Trhxj9DrD9PvBXtBe-OaL3ql4EF-0P7qQ"
+    ss = SpotifyShuffler()
     # ss.GetUser(token)
     # ss.QueriesLeft(token)
-    ss.GetPlaylist()
+    ss.SetToken(token)
+    # ss.GetPlaylist()
+    # 4uTVnVrmsuarBVHeriLKm8
+    ss.Shuffle("4uTVnVrmsuarBVHeriLKm8")
