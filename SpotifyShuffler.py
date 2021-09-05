@@ -44,7 +44,7 @@ class SpotifyShuffler:
         init(convert=True)
 
     def __LogError(self, string):
-        print(bcolors.WARNING + "[!]" + bcolors.ENDC + "Error: " + string)
+        print(bcolors.WARNING + "[!] " + bcolors.ENDC + "Error: " + string)
 
     def __LogInfo(self, string):
         print(bcolors.OKGREEN + "[+] " + bcolors.ENDC + string)
@@ -54,7 +54,6 @@ class SpotifyShuffler:
         self.tokenIsSet = True
 
     def GetPlaylist(self, token="") -> dict:
-        
         if self.tokenIsSet == False:
             if token != "":
                 self.tokenIsSet = True
@@ -118,7 +117,15 @@ class SpotifyShuffler:
     def GetUser(self, token):
         self.__LogInfo("This does nothing!")
 
-    def QueriesLeft(self, token):
+    def QueriesLeft(self, token=''):
+        if self.tokenIsSet == False:
+            if token != "":
+                self.tokenIsSet = True
+                self.token = token
+            else:
+                self.__LogError("Token has not been set.")
+                return
+
         # TODO: Actually print out the rate limit, however i have no idea how that looks like.
         print(f"{bcolors.OKGREEN}[+]{bcolors.ENDC} Querying spotify")
         self.r = requests.get("https://api.spotify.com/v1/me")
@@ -139,6 +146,7 @@ if __name__ == "__main__":
     # TODO: How does bash in linux do this, make it work like that?
     while(True):
         playlists = {}
+        arg = ""
         ss = SpotifyShuffler()
         foo = input("Shell: ")
         read = foo.split(" ")[0]
@@ -146,7 +154,7 @@ if __name__ == "__main__":
             sys.stdout.write("Quitting...\n")
             break
         elif read.lower() == 'help':
-            sys.stdout.write("SpotifyShuffler uses a shell like way of entering commands.\n\nSetToken token -- sets the token for other commands.\n\nGetPlaylist token(If not set)-- returns playlist the user owns, or can be shuffled.\n\nShuffle playlist-id token(If not set) -- Shuffles the specified playlist\n")
+            sys.stdout.write("SpotifyShuffler uses a shell like way of entering commands.\n\nSetToken token -- sets the token for other commands.\n\nGetPlaylist token(If not set)-- returns playlist the user owns, or can be shuffled.\n\nShuffle playlist-id token(If not set) -- Shuffles the specified playlist\nQueriesLeft -- If error code is '429' that means you are rate limited, check cooldown.\n")
         elif read.lower() == 'settoken':
             # Make this more functional or something..
             try:
@@ -161,6 +169,13 @@ if __name__ == "__main__":
             except (ValueError, IndexError):
                 pass
             playlists = ss.GetPlaylist(arg)
+        elif read.lower() == 'queriesleft':
+            # This too
+            try:
+                arg = foo.split(" ")[1]
+            except (ValueError, IndexError):
+                pass
+            ss.QueriesLeft(arg) 
         else:
             sys.stdout.write("Unknown command, try again.\n")
         
