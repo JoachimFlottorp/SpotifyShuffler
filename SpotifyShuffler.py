@@ -38,10 +38,10 @@ class bcolors:
 
 class SpotifyShuffler:
     token = None
-    def __init__(self, token):
+    tokenIsSet = False
+    def __init__(self):
         # Colorama
         init(convert=True)
-        self.token = token
 
     def __LogError(self, string):
         print(bcolors.WARNING + "[!]" + bcolors.ENDC + "Error: " + string)
@@ -49,7 +49,21 @@ class SpotifyShuffler:
     def __LogInfo(self, string):
         print(bcolors.OKGREEN + "[+] " + bcolors.ENDC + string)
 
-    def GetPlaylist(self):
+    def SetToken(self, string):
+        self.token = string
+        self.tokenIsSet = True
+
+    def GetPlaylist(self, token="") -> dict:
+        
+        if self.tokenIsSet == False:
+            if token != "":
+                self.tokenIsSet = True
+                self.token = token
+            else:
+                self.__LogError("Token has not been set.")
+                return
+        
+
         self.__LogInfo("Querying Spotify")
         header = {'Accept' : 'application/json', 'Content-Type' : 'application/json', 'Authorization' : 'Bearer %s' % self.token}
                 
@@ -94,10 +108,11 @@ class SpotifyShuffler:
             playlistOwnerId = items['owner'].get('uri')
             bar = playlistOwnerId.split(':')
             if bar[2] == userId:
-                namesList[items['name']] = bar
+                namesList[items['name']] = bar[2]
 
 
         print(namesList)
+        return namesList
                 
 
     def GetUser(self, token):
@@ -113,8 +128,41 @@ class SpotifyShuffler:
 
 
 if __name__ == "__main__":
-    # Just a quick fix.
-    # TODO: Make this work
     import sys
-    ss = SpotifyShuffler(sys.argv[1])
-    ss.GetPlaylist()
+    sys.stdout.buffer.write(b" ____  _            __  __ _           \n")
+    sys.stdout.buffer.write(b"/ ___|| |__  _   _ / _|/ _| | ___ _ __ \n")
+    sys.stdout.buffer.write(b"\___ \| '_ \| | | | |_| |_| |/ _ \ '__|\n")
+    sys.stdout.buffer.write(b" ___) | | | | |_| |  _|  _| |  __/ |   \n")
+    sys.stdout.buffer.write(b"|____/|_| |_|\__,_|_| |_| |_|\___|_|   \n\n")
+    sys.stdout.write("Usage: Shuffle 'token' 'playlist id'.\nHelp: help\n")
+
+    # TODO: How does bash in linux do this, make it work like that?
+    while(True):
+        playlists = {}
+        ss = SpotifyShuffler()
+        foo = input("Shell: ")
+        read = foo.split(" ")[0]
+        if read.lower() == 'exit':
+            sys.stdout.write("Quitting...\n")
+            break
+        elif read.lower() == 'help':
+            sys.stdout.write("SpotifyShuffler uses a shell like way of entering commands.\n\nSetToken token -- sets the token for other commands.\n\nGetPlaylist token(If not set)-- returns playlist the user owns, or can be shuffled.\n\nShuffle playlist-id token(If not set) -- Shuffles the specified playlist\n")
+        elif read.lower() == 'settoken':
+            # Make this more functional or something..
+            try:
+                arg = foo.split(" ")[1]
+            except (ValueError, IndexError):
+                pass
+            ss.SetToken(arg)
+        elif read.lower() == 'getplaylist':
+            # This too
+            try:
+                arg = foo.split(" ")[1]
+            except (ValueError, IndexError):
+                pass
+            playlists = ss.GetPlaylist(arg)
+        else:
+            sys.stdout.write("Unknown command, try again.\n")
+        
+    # ss = SpotifyShuffler(sys.argv[1])
+    # userOwnedPlaylists = ss.GetPlaylist()
