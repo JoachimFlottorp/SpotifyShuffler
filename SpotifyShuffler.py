@@ -227,7 +227,7 @@ if __name__ == "__main__":
     sys.stdout.buffer.write(b"\___ \| '_ \| | | | |_| |_| |/ _ \ '__|\n")
     sys.stdout.buffer.write(b" ___) | | | | |_| |  _|  _| |  __/ |   \n")
     sys.stdout.buffer.write(b"|____/|_| |_|\__,_|_| |_| |_|\___|_|   \n\n")
-    sys.stdout.write("Usage: Shuffle 'token' 'playlist id'.\nHelp: help\n")
+    sys.stdout.write("Usage: Shuffle 'playlist id' 'token'.\nHelp: help\n")
 
     # TODO: Make this better in some way
     ss = SpotifyShuffler()
