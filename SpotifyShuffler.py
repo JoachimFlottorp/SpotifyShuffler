@@ -240,7 +240,7 @@ if __name__ == "__main__":
             sys.stdout.write("Quitting...\n")
             break
         elif read.lower() == 'help':
-            sys.stdout.write("SpotifyShuffler uses a shell like way of entering commands.\n\nSetToken token -- sets the token for other commands.\n\nGetPlaylist token(If not set)-- returns playlist the user owns, or can be shuffled.\n\nShuffle playlist-id token(If not set) -- Shuffles the specified playlist, NOTE: Shuffled version will be in a new playlist.\n\nQueriesLeft -- If error code is '429' that means you are rate limited, check cooldown.\n\nStatusCode -- prints what every status code means\n")
+            sys.stdout.write("SpotifyShuffler uses a shell like way of entering commands.\n\nSetToken token -- sets the token for other commands.\n\nGetPlaylist token(If not set)-- returns playlist the user owns, or can be shuffled.\n\nShuffle playlistID token(If not set) -- Shuffles the specified playlist, NOTE: Shuffled version will be in a new playlist.\n\nQueriesLeft -- If error code is '429' that means you are rate limited, check cooldown.\n\nStatusCode -- prints what every status code means\n")
         elif read.lower() == 'settoken':
             # Make this more functional or something..
             try:
