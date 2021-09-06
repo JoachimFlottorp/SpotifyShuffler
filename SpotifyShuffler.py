@@ -4,6 +4,7 @@ from requests.exceptions import HTTPError
 from colorama import init
 import json
 import random
+import base64
 
 # https://developer.spotify.com/documentation/web-api/
 
@@ -59,7 +60,7 @@ class SpotifyShuffler:
             if type == HTTPMethod.GET:
                 self.r = requests.get(query, headers=header)
             if type == HTTPMethod.PUT:
-                self.r = requests.put(query, headers=header)
+                self.r = requests.put(query, headers=header, data=data)
             if type == HTTPMethod.POST:
                 self.r = requests.post(query, headers=header, data=data)
         except HTTPError as e:
@@ -227,6 +228,17 @@ class SpotifyShuffler:
         
         if self.__Request(f"https://api.spotify.com/v1/playlists/{newPlaylistID}/tracks?uris={trackStr}", header, HTTPMethod.POST, ) == False:
             return
+
+        self.__LogInfo("Uploading Cover Image")
+
+        header = {'Accept' : 'application/json', 'Content-Type' : 'application/json', 'Authorization' : 'Bearer %s' % self.token}
+
+        # Download original cover and encode to base64.
+        _cover = base64.b64encode(requests.get(cover, allow_redirects=True).content)
+
+
+        if self.__Request(f"https://api.spotify.com/v1/playlists/{newPlaylistID}/images", header, HTTPMethod.PUT, _cover) == False:
+            return
         
         
         # https://stackoverflow.com/questions/52907414/python-web-scrape-dealing-with-user-login-popup
@@ -271,7 +283,7 @@ if __name__ == "__main__":
             sys.stdout.write("Quitting...\n")
             break
         elif read.lower() == 'help':
-            sys.stdout.write("SpotifyShuffler uses a shell like way of entering commands.\n\nSetToken token -- sets the token for other commands.\n\nGetPlaylist token(If not set)-- returns playlist the user owns, or can be shuffled.\n\nShuffle playlistID token(If not set) -- Shuffles the specified playlist, NOTE: Shuffled version will be in a new playlist.\n\nQueriesLeft -- If error code is '429' that means you are rate limited, check cooldown.\n\nStatusCode -- prints what every status code means\n")
+            sys.stdout.write("SpotifyShuffler uses a shell like way of entering commands.\n\nThere are two ways to get hold of a token, either by going to 'https://developer.spotify.com/dashboard/' creating a 'App' and settings Client ID and Client Secret as Environmental variables \n\nSetToken token -- sets the token for other commands.\n\nGetPlaylist token(If not set)-- returns playlist the user owns, or can be shuffled.\n\nShuffle playlistID token(If not set) -- Shuffles the specified playlist, NOTE: Shuffled version will be in a new playlist.\n\nQueriesLeft -- If error code is '429' that means you are rate limited, check cooldown.\n\nStatusCode -- prints what every status code means\n")
         elif read.lower() == 'settoken':
             # Make this more functional or something..
             try:
