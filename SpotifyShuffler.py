@@ -229,7 +229,7 @@ class SpotifyShuffler:
             return
         
         
-        
+        # https://stackoverflow.com/questions/52907414/python-web-scrape-dealing-with-user-login-popup
 
     def GetUser(self, token):
         self.__LogInfo("This does nothing!")
