@@ -3,6 +3,7 @@ import requests
 from requests.exceptions import HTTPError
 from colorama import init
 import json
+import random
 
 # https://developer.spotify.com/documentation/web-api/
 
@@ -47,7 +48,6 @@ class SpotifyShuffler:
     def __init__(self):
         # Colorama
         init(convert=True)
-
     def __LogError(self, string):
         print(bcolors.WARNING + "[!] " + bcolors.ENDC + "Error: " + string)
 
@@ -183,7 +183,7 @@ class SpotifyShuffler:
             
         for items in data['items']:
             tracks.append(items['track'].get('uri'))
-        
+
         # Construct a new playlist.
         self.__LogInfo("Creating Playlist")
 
@@ -191,14 +191,45 @@ class SpotifyShuffler:
         
         _data = {'name' : f'{name} (Shuffled)', 'description' : description, 'public' : public}
         # This is needed to convert the python bool to a json bool!
+        data = json.dumps(_data)
 
-        print(data)
         if self.__Request(f"https://api.spotify.com/v1/users/{userID}/playlists", header, HTTPMethod.POST, data) == False:
             return
 
+        # Query returns the id of the recently made playlist, grab it.
+        _foo = json.loads(self.r.text)
+        newPlaylistID = _foo['id']
 
+        self.__LogInfo(f"New playlist created with ID: {newPlaylistID}")
 
+        # Shuffle array with song id
 
+        self.__LogInfo(f"Shuffling a total of {len(tracks)} songs!")
+
+        # Shuffle 20 timse
+        import sys
+        sys.stdout.write(bcolors.OKGREEN + "[+] " + bcolors.ENDC + "Shuffling: ")
+        progress = "#"
+        j = 0
+        for i in range(0, 19):
+            random.shuffle(tracks)
+            if i % 4 == 0:
+                sys.stdout.write(progress)
+                sys.stdout.flush()
+                progress += "#"
+        print("")
+
+        trackStr = ','.join(tracks)
+
+        self.__LogInfo("Sending shuffled songs to new playlist")
+
+        header = {'Accept' : 'application/json', 'Content-Type' : 'application/json', 'Authorization' : 'Bearer %s' % self.token}
+        
+        if self.__Request(f"https://api.spotify.com/v1/playlists/{newPlaylistID}/tracks?uris={trackStr}", header, HTTPMethod.POST, ) == False:
+            return
+        
+        
+        
 
     def GetUser(self, token):
         self.__LogInfo("This does nothing!")
