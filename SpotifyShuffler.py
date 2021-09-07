@@ -72,7 +72,7 @@ class SpotifyShuffler:
             self.__LogError(f"HTTP: {e}")
             return False
         except Exception as e:
-            self.__LogError(f"{e}")
+            self.__LogError(f"Exception: {e}")
             return False
 
         if self.r.status_code == StatusCode.TooManyRequests:
@@ -86,34 +86,57 @@ class SpotifyShuffler:
                 isError = True
         if isError:
             self.__LogError(f"Query returned a bad status code: {self.r.status_code}.")
-            self.__LogError(f"Message {self.r.json()['error']['message']}")
+            try:
+                self.__LogError(f"Message {self.r.json()['error']['message']}")
+            except Exception:
+                print(self.r.text)
+            except TypeError:
+                print(self.r.text)
             return False
         else:
             self.__LogInfo(f"Query complete with status code: {self.r.status_code}")
+           
 
         return True
 
     def GetToken(self):
         from dotenv import dotenv_values
+        # Needed to get token
         config = dotenv_values(".env")
-        scopes = urllib.parse.quote_plus("playlist-read-private ugc-image-upload playlist-modify-public playlist-modify-private playlist-read-public playlist-read-private")
-        redirect_uri = urllib.parse.quote_plus("https://google.com/")
+        scopes = urllib.parse.quote("playlist-modify-public playlist-modify-private playlist-read-private ugc-image-upload")
+        redirect_uri = urllib.parse.quote("http://127.0.0.1:5273")
         url = 'https://accounts.spotify.com/authorize?response_type=code&client_id=' + config['SPOTIFY_CLIENT_ID'] + '&redirect_uri=' + redirect_uri + "&scope=" + scopes
         try:
             webbrowser.open(url)
         except webbrowser.Error:
-            print("Unable to open browser, url: " + url)
+            self.__LogError("Unable to open standard browser, please open the url in your preferred browser: " + url)
             pass
+        import GetHandler
+        self.__LogInfo("Awaiting token, please login!")
+        access_token = GetHandler.run()
+        self.__LogInfo("Successfully acquired access token! Asking spotify for auth code")
 
-    def GetPlaylist(self, token="") -> dict:
-        if self.tokenIsSet == False:
-            if token != "":
-                self.token = token
-                self.tokenIsSet = True
-            else:
-                self.__LogError("Token has not been set.")
-                return
+        body = {'grant_type': 'authorization_code', 'code': f'{access_token}', 'redirect_uri': 'http://127.0.0.1:5273'}
         
+        client_id = config['SPOTIFY_CLIENT_ID']
+        client_secret = config['SPOTIFY_CLIENT_SECRET']
+        client_creds = f"{client_id}:{client_secret}"
+        client_creds_b64 = base64.b64encode(client_creds.encode())
+
+        header = {'Content-Type': 'application/x-www-form-urlencoded', 'Authorization': f'Basic {client_creds_b64.decode()}'}
+
+        if self.__Request("https://accounts.spotify.com/api/token", header, HTTPMethod.POST, body) == False:
+            return
+
+        
+        self.token = json.loads(self.r.text)['access_token']
+        self.tokenIsSet = True
+
+
+    def GetPlaylist(self) -> dict:
+        if self.tokenIsSet == False:
+            self.__LogError("Token has not been set.")
+            return
 
         self.__LogInfo("Querying Spotify for Playlist")
         header = {'Accept' : 'application/json', 'Content-Type' : 'application/json', 'Authorization' : 'Bearer %s' % self.token}
@@ -152,14 +175,10 @@ class SpotifyShuffler:
         # Returns list, can always be used by someone.
         return namesList
     
-    def Shuffle(self, playlistId: str, token=""):
+    def Shuffle(self, playlistId: str):
         if self.tokenIsSet == False:
-            if token != "":
-                self.tokenIsSet = True
-                self.token = token
-            else:
-                self.__LogError("Token has not been set.")
-                return
+            self.__LogError("Token has not been set.")
+            return
 
         # Query spotify to get information about the playlist
         self.__LogInfo("Querying Spotify to get information about chosen playlist")
@@ -172,7 +191,10 @@ class SpotifyShuffler:
         # Cover image
         cover = ""
         for images in data['images']:
-            cover = images.get('url')
+            if images.get('height') == 640:
+                cover = images.get('url')
+                break
+
         
         # User Id
         userID = data['owner']['uri']
@@ -255,17 +277,13 @@ class SpotifyShuffler:
         
         # https://stackoverflow.com/questions/52907414/python-web-scrape-dealing-with-user-login-popup
 
-    def GetUser(self, token):
+    def GetUser(self):
         self.__LogInfo("This does nothing!")
 
-    def QueriesLeft(self, token=''):
+    def QueriesLeft(self):
         if self.tokenIsSet == False:
-            if token != "":
-                self.tokenIsSet = True
-                self.token = token
-            else:
-                self.__LogError("Token has not been set.")
-                return
+            self.__LogError("Token has not been set.")
+            return
 
         # TODO: Actually print out the rate limit, however i have no idea how that looks like.
         print(f"{bcolors.OKGREEN}[+]{bcolors.ENDC} Querying spotify")
@@ -295,30 +313,20 @@ if __name__ == "__main__":
             sys.stdout.write("Quitting...\n")
             break
         elif read.lower() == 'help':
-            sys.stdout.write("SpotifyShuffler uses a shell like way of entering commands.\n\nGetToken -- ***Opens in your browser*** You are required to login with your spotify, this gives you a token which we can then use.\n\nGetPlaylist token(If not set)-- returns playlist the user owns, or can be shuffled.\n\nShuffle playlistID token(If not set) -- Shuffles the specified playlist, NOTE: Shuffled version will be in a new playlist.\n\nQueriesLeft -- If error code is '429' that means you are rate limited, check cooldown.\n\nStatusCode -- prints what every status code means\n")
+            sys.stdout.write("SpotifyShuffler uses a shell like way of entering commands.\n\nGetToken -- ***Opens in your browser*** You are required to login with your spotify, this gives you a token which we can then use.\n\nGetPlaylist -- returns playlist the user owns, or can be shuffled.\n\nShuffle playlistID -- Shuffles the specified playlist, NOTE: Shuffled version will be in a new playlist.\n\nQueriesLeft -- If error code is '429' that means you are rate limited, check cooldown.\n\nStatusCode -- prints what every status code means\n")
         elif read.lower() == 'gettoken':
-            # Make this more functional or something..
-            try:
-                arg = foo.split(" ")[1]
-            except (ValueError, IndexError):
-                pass
             ss.GetToken()
-        elif read.lower() == 'settokenownapp':
-            ss.SetTokenOwnApp()
         elif read.lower() == 'getplaylist':
+            ss.GetPlaylist()
+        elif read.lower() == 'shuffle':
             # This too
             try:
                 arg = foo.split(" ")[1]
             except (ValueError, IndexError):
                 pass
-            ss.GetPlaylist(arg)
+            ss.Shuffle(arg)
         elif read.lower() == 'queriesleft':
-            # This too
-            try:
-                arg = foo.split(" ")[1]
-            except (ValueError, IndexError):
-                pass
-            ss.QueriesLeft(arg)
+            ss.QueriesLeft()
         elif read.lower() == 'statuscode':
             sys.stdout.write("Status Codes: Ok = 200\nCreated = 201\nAccepted = 202\nNoContent = 204\nNotModified = 304\nBadRequest = 400\nUnauthorized = 401\nForbidden = 403\nNotFound = 404\nTooManyRequests = 429\nInternalServerError = 500\nBadGateway = 502\nServiceUnavailable = 503\n") 
         else:
