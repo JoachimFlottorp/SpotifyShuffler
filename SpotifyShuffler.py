@@ -5,6 +5,8 @@ from colorama import init
 import json
 import random
 import base64
+import webbrowser
+import urllib.parse
 
 # https://developer.spotify.com/documentation/web-api/
 
@@ -37,6 +39,7 @@ class HTTPMethod:
     GET = 0,
     PUT = 1,
     POST = 2,
+    NOREDIRECT = 3,
 
 class bcolors:
     OKGREEN = '\033[32m'
@@ -63,6 +66,8 @@ class SpotifyShuffler:
                 self.r = requests.put(query, headers=header, data=data)
             if type == HTTPMethod.POST:
                 self.r = requests.post(query, headers=header, data=data)
+            if type == HTTPMethod.NOREDIRECT:
+                self.r = requests.get(query, allow_redirects=False)
         except HTTPError as e:
             self.__LogError(f"HTTP: {e}")
             return False
@@ -88,10 +93,17 @@ class SpotifyShuffler:
 
         return True
 
-    def SetToken(self, string):
-        self.token = string
-        self.tokenIsSet = True
-        self.__LogInfo("Token set!")
+    def GetToken(self):
+        from dotenv import dotenv_values
+        config = dotenv_values(".env")
+        scopes = urllib.parse.quote_plus("playlist-read-private ugc-image-upload playlist-modify-public playlist-modify-private playlist-read-public playlist-read-private")
+        redirect_uri = urllib.parse.quote_plus("https://google.com/")
+        url = 'https://accounts.spotify.com/authorize?response_type=code&client_id=' + config['SPOTIFY_CLIENT_ID'] + '&redirect_uri=' + redirect_uri + "&scope=" + scopes
+        try:
+            webbrowser.open(url)
+        except webbrowser.Error:
+            print("Unable to open browser, url: " + url)
+            pass
 
     def GetPlaylist(self, token="") -> dict:
         if self.tokenIsSet == False:
@@ -283,14 +295,16 @@ if __name__ == "__main__":
             sys.stdout.write("Quitting...\n")
             break
         elif read.lower() == 'help':
-            sys.stdout.write("SpotifyShuffler uses a shell like way of entering commands.\n\nThere are two ways to get hold of a token, either by going to 'https://developer.spotify.com/dashboard/' creating a 'App' and settings Client ID and Client Secret as Environmental variables \n\nSetToken token -- sets the token for other commands.\n\nGetPlaylist token(If not set)-- returns playlist the user owns, or can be shuffled.\n\nShuffle playlistID token(If not set) -- Shuffles the specified playlist, NOTE: Shuffled version will be in a new playlist.\n\nQueriesLeft -- If error code is '429' that means you are rate limited, check cooldown.\n\nStatusCode -- prints what every status code means\n")
-        elif read.lower() == 'settoken':
+            sys.stdout.write("SpotifyShuffler uses a shell like way of entering commands.\n\nGetToken -- ***Opens in your browser*** You are required to login with your spotify, this gives you a token which we can then use.\n\nGetPlaylist token(If not set)-- returns playlist the user owns, or can be shuffled.\n\nShuffle playlistID token(If not set) -- Shuffles the specified playlist, NOTE: Shuffled version will be in a new playlist.\n\nQueriesLeft -- If error code is '429' that means you are rate limited, check cooldown.\n\nStatusCode -- prints what every status code means\n")
+        elif read.lower() == 'gettoken':
             # Make this more functional or something..
             try:
                 arg = foo.split(" ")[1]
             except (ValueError, IndexError):
                 pass
-            ss.SetToken(arg)
+            ss.GetToken()
+        elif read.lower() == 'settokenownapp':
+            ss.SetTokenOwnApp()
         elif read.lower() == 'getplaylist':
             # This too
             try:

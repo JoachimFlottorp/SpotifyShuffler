@@ -3,3 +3,6 @@ requests
 colorama
 random
 base64
+webbrowser
+urllib
+python-dotenv
