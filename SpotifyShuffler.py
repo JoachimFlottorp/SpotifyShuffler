@@ -53,10 +53,16 @@ class SpotifyShuffler:
         # Colorama
         init(convert=True)
     def __LogError(self, string):
-        print(bcolors.WARNING + "[!] " + bcolors.ENDC + "Error: " + string)
+        try:
+            print(bcolors.WARNING + "[!] " + bcolors.ENDC + "Error: " + string)
+        except Exception:
+            print("Error: " + string)
 
     def __LogInfo(self, string):
-        print(bcolors.OKGREEN + "[+] " + bcolors.ENDC + string)
+        try:
+            print(bcolors.OKGREEN + "[+] " + bcolors.ENDC + string)
+        except Exception:
+            print("Error: " + string)
 
     def __Request(self, query, header, type: HTTPMethod, data="") -> bool:
         try:
