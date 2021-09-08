@@ -7,6 +7,7 @@ import random
 import base64
 import webbrowser
 import urllib.parse
+import math
 
 # https://developer.spotify.com/documentation/web-api/
 
@@ -140,6 +141,7 @@ class SpotifyShuffler:
 
 
     def GetPlaylist(self) -> dict:
+        #[TODO]: This only returns two, i think?
         if self.tokenIsSet == False:
             self.__LogError("Token has not been set.")
             return
@@ -181,6 +183,31 @@ class SpotifyShuffler:
         # Returns list, can always be used by someone.
         return namesList
     
+    def __SendShuffle(self, tracks, newPlaylistID):
+        # Shuffle array with song id
+        self.__LogInfo(f"Shuffling a total of {len(tracks)} songs!")
+
+        # Shuffle 20 timse
+        import sys
+        sys.stdout.write(bcolors.OKGREEN + "[+] " + bcolors.ENDC + "Shuffling: ")
+        progress = "#"
+        j = 0
+        for i in range(0, 19):
+            random.shuffle(tracks)
+            if i % 4 == 0:
+                sys.stdout.write(progress)
+                sys.stdout.flush()
+                progress += "#"
+        print("")
+
+        trackStr = ','.join(tracks)
+
+        self.__LogInfo("Sending shuffled songs to new playlist")
+
+        header = {'Accept' : 'application/json', 'Content-Type' : 'application/json', 'Authorization' : 'Bearer %s' % self.token}
+        
+        return self.__Request(f"https://api.spotify.com/v1/playlists/{newPlaylistID}/tracks?uris={trackStr}", header, HTTPMethod.POST)
+
     def Shuffle(self, playlistId: str):
         if self.tokenIsSet == False:
             self.__LogError("Token has not been set.")
@@ -212,19 +239,6 @@ class SpotifyShuffler:
 
         header = {'Accept' : 'application/json', 'Content-Type' : 'application/json', 'Authorization' : 'Bearer %s' % self.token}
         
-        # Query spotify for the actual songs in playlist
-        self.__LogInfo("Querying Spotify about tracks in the playlist")
-
-        if self.__Request(f"https://api.spotify.com/v1/playlists/{playlistId}/tracks", header, HTTPMethod.GET) == False:
-            return
-        
-        data = json.loads(self.r.text)
-
-        tracks = []
-            
-        for items in data['items']:
-            tracks.append(items['track'].get('uri'))
-
         # Construct a new playlist.
         self.__LogInfo("Creating Playlist")
 
@@ -243,31 +257,31 @@ class SpotifyShuffler:
 
         self.__LogInfo(f"New playlist created with ID: {newPlaylistID}")
 
-        # Shuffle array with song id
+        # Query spotify for the actual songs in playlist
+        self.__LogInfo("Querying Spotify about tracks in the playlist")
 
-        self.__LogInfo(f"Shuffling a total of {len(tracks)} songs!")
-
-        # Shuffle 20 timse
-        import sys
-        sys.stdout.write(bcolors.OKGREEN + "[+] " + bcolors.ENDC + "Shuffling: ")
-        progress = "#"
-        j = 0
-        for i in range(0, 19):
-            random.shuffle(tracks)
-            if i % 4 == 0:
-                sys.stdout.write(progress)
-                sys.stdout.flush()
-                progress += "#"
-        print("")
-
-        trackStr = ','.join(tracks)
-
-        self.__LogInfo("Sending shuffled songs to new playlist")
-
-        header = {'Accept' : 'application/json', 'Content-Type' : 'application/json', 'Authorization' : 'Bearer %s' % self.token}
-        
-        if self.__Request(f"https://api.spotify.com/v1/playlists/{newPlaylistID}/tracks?uris={trackStr}", header, HTTPMethod.POST, ) == False:
+        if self.__Request(f"https://api.spotify.com/v1/playlists/{playlistId}/tracks", header, HTTPMethod.GET) == False:
             return
+        
+        data = json.loads(self.r.text)
+        
+        needed_queries = math.ceil(data['total'] / 100)
+        offset = 0
+
+        tracks = []
+        for i in range(0, needed_queries):
+
+            for items in data['items']:
+                tracks.append(items['track'].get('uri'))
+
+            if self.__SendShuffle(tracks, newPlaylistID) == True:
+                
+                header = {'Accept' : 'application/json', 'Content-Type' : 'application/json', 'Authorization' : 'Bearer %s' % self.token}
+                offset += 1
+                if self.__Request(f"https://api.spotify.com/v1/playlists/{playlistId}/tracks?offset={offset * 100}", header, HTTPMethod.GET) == False:
+                    return False
+                tracks.clear()
+                data = json.loads(self.r.text)
 
         self.__LogInfo("Uploading Cover Image")
 
@@ -277,11 +291,7 @@ class SpotifyShuffler:
         _cover = base64.b64encode(requests.get(cover, allow_redirects=True).content)
 
 
-        if self.__Request(f"https://api.spotify.com/v1/playlists/{newPlaylistID}/images", header, HTTPMethod.PUT, _cover) == False:
-            return
-        
-        
-        # https://stackoverflow.com/questions/52907414/python-web-scrape-dealing-with-user-login-popup
+        return self.__Request(f"https://api.spotify.com/v1/playlists/{newPlaylistID}/images", header, HTTPMethod.PUT, _cover)
 
     def GetUser(self):
         self.__LogInfo("This does nothing!")
