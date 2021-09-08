@@ -24,7 +24,7 @@ Simply placing the keys in their respective places in the [.env](/.env) Allows t
     GetToken
     ```
 
-3. Third we run the GetPlaylist command, this gets all playlists that you own with their respective id, we use this id in step 3.
+3. Third we run the GetPlaylist command, this gets all playlists that you own with their respective id, we use this id in step 4.
 
     ```bash
     GetPlaylist
