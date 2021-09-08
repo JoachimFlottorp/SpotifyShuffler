@@ -3,7 +3,7 @@
 This uses a shell like way of entering commands.
 
 To use this you require a 'Spotify App' thing, basically you go to [Spotify-Dashboard](https://developer.spotify.com/dashboard/login).
-Create a app. And you get a Client ID and Client Secret
+Create a app. Once your 'Spotify App' has been made, enter its dashboard click the big green 'EDIT SETTINGS' button, scroll down 'Redirect URLs' and enter 'http://127.0.0.1:5273' This is so when you login spotify returns to this URL and we grab the token as a GET request.
 
 ## Client ID and Secret
 
