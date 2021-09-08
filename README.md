@@ -14,7 +14,7 @@ Simply placing the keys in their respective places in the [.env](/.env) Allows t
 1. First we run pip3 and install all the required packages.
 
     ```bash
-    ~ pip3 intall -r requirements.txt
+    ~ pip3 install -r requirements.txt
     ```
 
 2. Secondly we run the GetToken command, this asks spotify for your unique token, you will be instructed to login.
