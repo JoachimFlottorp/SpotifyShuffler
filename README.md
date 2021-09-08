@@ -27,13 +27,11 @@ Simply placing the keys in their respective places in the [.env](/.env) Allows t
 3. Third we run the GetPlaylist command, this gets all playlists that you own with their respective id, we use this id in step 3.
 
     ```bash
-    ~ python3 SpotifyShuffler.py
     GetPlaylist
     ```
 
 4. Lastly we run the Shuffle command using the playlist id as an argument, this shuffles the playlist into a new playlist.
 
      ```bash
-    ~ python3 SpotifyShuffler.py
     Shuffle 'token'
     ```
